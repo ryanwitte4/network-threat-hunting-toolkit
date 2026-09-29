@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Network Threat Hunting Toolkit: Web Analyzer</title>
+  <meta name="description" content="Run the nthunt packet-capture detectors in your browser. Captures are analyzed locally and never uploaded.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%2317202B'/><path d='M4 20h5l3-9 4 14 3-10 2 5h7' fill='none' stroke='%23F2A93B' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#17202b">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+</head>
+<body>
+  <header class="masthead">
+    <div class="wrap masthead__row">
+      <a class="brand" href="./">
+        <svg class="brand__mark" viewBox="0 0 32 32" aria-hidden="true"><path d="M4 20h5l3-9 4 14 3-10 2 5h7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>nthunt</span>
+      </a>
+      <nav class="masthead__nav" aria-label="Project links">
+        <a id="repoLink" href="#" hidden>Source on GitHub</a>
+        <a id="methodLink" href="#" hidden>Methodology</a>
+        <button id="installBtn" class="navbtn" type="button" hidden>Install app</button>
+      </nav>
+      <p class="engine" id="engine" role="status" aria-live="polite">
+        <span class="engine__dot" aria-hidden="true"></span>
+        <span id="engineText">Starting the Python engine</span>
+      </p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="intro">
+      <h1>Hunt for threats in a packet capture, right in your browser.</h1>
+      <p class="intro__lede">Drop in a <code>.pcap</code> or <code>.pcapng</code> file and run the same Python detectors as the <code>nthunt</code> command-line tool. The capture is parsed on your computer and is never uploaded anywhere.</p>
+      <div class="intro__actions">
+        <button class="btn btn--demo" id="demoBtn" type="button">See it in action</button>
+        <p class="intro__note">Runs every detector on a sample capture with planted beaconing, suspicious DNS and port scans. About 20 seconds on a first visit.</p>
+      </div>
+    </section>
+
+    <!-- 1. Capture -->
+    <section class="step" aria-labelledby="s1">
+      <h2 id="s1" class="step__title"><span class="step__n">1</span>Load a capture</h2>
+
+      <div class="drop" id="drop" tabindex="0" role="button" aria-describedby="dropHint">
+        <input type="file" id="file" accept=".pcap,.pcapng,.cap" hidden>
+        <svg class="drop__icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M24 30V10m0 0-7 7m7-7 7 7M9 30v6a3 3 0 0 0 3 3h24a3 3 0 0 0 3-3v-6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <p class="drop__main"><strong>Drop a capture here</strong> or <span class="linkish">choose a file</span></p>
+        <p class="drop__hint" id="dropHint">Accepts .pcap, .pcapng and .cap files. Up to about 150 MB works well.</p>
+      </div>
+      <p class="sample" id="sampleLine">No capture handy? <button class="textbtn" id="sampleBtn" type="button">Use the synthetic lab capture</button> (30 minutes of made-up traffic with planted beaconing, suspicious DNS and port scans).</p>
+
+      <div class="capture" id="capture" hidden>
+        <div class="capture__head">
+          <p class="capture__name" id="capName"></p>
+          <button class="textbtn" id="replaceBtn" type="button">Load a different file</button>
+        </div>
+        <dl class="capture__facts">
+          <div><dt>Packets</dt><dd id="capPackets"></dd></div>
+          <div><dt>Duration</dt><dd id="capSpan"></dd></div>
+          <div><dt>First packet (UTC)</dt><dd id="capStart" class="nowrap"></dd></div>
+          <div><dt>File size</dt><dd id="capSize"></dd></div>
+        </dl>
+        <figure class="timeline">
+          <svg id="timeline" preserveAspectRatio="none" role="img" aria-label="Packets over time"></svg>
+          <figcaption><span id="tlStart"></span><span>Packets over time</span><span id="tlEnd"></span></figcaption>
+        </figure>
+      </div>
+
+      <p class="notice notice--error" id="loadError" role="alert" hidden></p>
+    </section>
+
+    <!-- 2. Detectors -->
+    <section class="step" aria-labelledby="s2">
+      <h2 id="s2" class="step__title"><span class="step__n">2</span>Choose detectors</h2>
+      <p class="step__help">These come straight from <code>nthunt/cli.py</code>. Adjust a detector’s thresholds to tune out false positives, then run.</p>
+      <div id="detectors" class="detectors">
+        <p class="placeholder">Detectors appear once the Python engine is ready.</p>
+      </div>
+      <div class="runbar">
+        <button class="btn" id="runBtn" type="button" disabled>Run selected detectors</button>
+        <p class="runbar__why" id="runWhy">Load a capture to run detectors.</p>
+      </div>
+    </section>
+
+    <!-- 3. Findings -->
+    <section class="step" aria-labelledby="s3">
+      <div class="step__titlerow">
+        <h2 id="s3" class="step__title"><span class="step__n">3</span>Review findings</h2>
+        <div class="findings__tools" id="findingsTools" hidden>
+          <label class="check"><input type="checkbox" id="defang" checked> Defang indicators when copying</label>
+          <button class="btn btn--quiet" id="downloadAll" type="button">Download all as JSON</button>
+        </div>
+      </div>
+      <div id="findings" class="findings">
+        <p class="placeholder">Results show up here, one panel per detector.</p>
+      </div>
+    </section>
+
+    <section class="about" aria-labelledby="about">
+      <h2 id="about">How this works</h2>
+      <div class="about__cols">
+        <p>The page loads <a href="https://pyodide.org/">Pyodide</a>, a build of Python that runs in the browser, installs <a href="https://scapy.net/">Scapy</a>, and imports the toolkit’s own <code>nthunt</code> package. There is no server and no separate copy of the detection logic, so the browser and the command line always give the same answers.</p>
+        <p>To run it from a terminal instead: <code>python -m nthunt beacon capture.pcap</code>. Captures from real incidents can contain live malware. Analyze the traffic, but don’t carve out and open files from it on your own machine.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <div class="wrap">Built by Ryan C. Witte, Rutgers University–New Brunswick. MIT License.</div>
+  </footer>
+
+  <template id="detectorTpl">
+    <div class="det">
+      <label class="det__pick">
+        <input type="checkbox" class="det__check">
+        <span class="det__text">
+          <span class="det__name"></span>
+          <span class="det__summary"></span>
+        </span>
+      </label>
+      <span class="badge"></span>
+      <details class="det__settings">
+        <summary>Settings</summary>
+        <div class="det__params"></div>
+        <button type="button" class="textbtn det__reset">Reset to defaults</button>
+      </details>
+      <p class="det__todo" hidden></p>
+    </div>
+  </template>
+
+  <script src="app.js" type="module"></script>
+</body>
+</html>

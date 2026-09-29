@@ -1,0 +1,28 @@
+# Packet captures and archives - NEVER commit (may contain live malware / large files)
+*.pcap
+*.pcapng
+*.cap
+*.zip
+*.7z
+data/pcaps/
+data/extracted/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Secrets
+.env
+
+# ...except the synthetic sample that ships with the web analyzer (no real traffic)
+!web/samples/synthetic-lab.pcap
